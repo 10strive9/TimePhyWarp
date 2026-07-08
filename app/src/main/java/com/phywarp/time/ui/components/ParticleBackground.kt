@@ -50,8 +50,9 @@ fun ParticleBackground(modifier: Modifier = Modifier, color: Color) {
     }
 
     Canvas(modifier = modifier.fillMaxSize()) {
-        val canvasWidth = size.width
-        val canvasHeight = size.height
+        val drawContextSize = this.size
+        val canvasWidth = drawContextSize.width
+        val canvasHeight = drawContextSize.height
 
         // Draw connections between close particles
         for (i in particles.indices) {
