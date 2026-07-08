@@ -1,0 +1,15 @@
+<resources>
+    <string name="app_name">PhyWarp 计时器</string>
+    <string name="timer_tab">计时</string>
+    <string name="log_tab">日志</string>
+    <string name="start">开始</string>
+    <string name="pause">暂停</string>
+    <string name="resume">继续</string>
+    <string name="reset">重置</string>
+    <string name="task_title_hint">请输入任务标题...</string>
+    <string name="count_up">正计时</string>
+    <string name="count_down">倒计时</string>
+    <string name="export">导出日志</string>
+    <string name="clear_all">清空当日</string>
+    <string name="search_hint">搜索任务标题...</string>
+</resources>
