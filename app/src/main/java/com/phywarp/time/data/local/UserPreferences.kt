@@ -5,6 +5,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
@@ -21,10 +22,15 @@ class UserPreferences(private val context: Context) {
         val TARGET_SECONDS = longPreferencesKey("target_seconds")
         val IS_RUNNING = booleanPreferencesKey("is_running")
         val IS_COUNT_UP = booleanPreferencesKey("is_count_up")
+        val TIMER_FONT_SIZE = floatPreferencesKey("timer_font_size")
     }
 
     val themeColor: Flow<String> = context.dataStore.data.map { preferences ->
         preferences[THEME_COLOR] ?: "BLUE"
+    }
+
+    val timerFontSize: Flow<Float> = context.dataStore.data.map { preferences ->
+        preferences[TIMER_FONT_SIZE] ?: 160f
     }
 
     val timerState: Flow<TimerState> = context.dataStore.data.map { preferences ->
@@ -40,6 +46,12 @@ class UserPreferences(private val context: Context) {
     suspend fun setThemeColor(color: String) {
         context.dataStore.edit { preferences ->
             preferences[THEME_COLOR] = color
+        }
+    }
+
+    suspend fun setTimerFontSize(size: Float) {
+        context.dataStore.edit { preferences ->
+            preferences[TIMER_FONT_SIZE] = size
         }
     }
 

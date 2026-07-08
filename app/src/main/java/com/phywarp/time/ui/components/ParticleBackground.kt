@@ -10,13 +10,17 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import kotlin.random.Random
 
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
+
 data class Particle(
     var x: Float,
     var y: Float,
     var radius: Float,
     var speedX: Float,
     var speedY: Float,
-    var alpha: Float
+    var alpha: Float,
+    var colorShift: Float
 )
 
 @Composable
@@ -26,20 +30,21 @@ fun ParticleBackground(modifier: Modifier = Modifier, color: Color) {
         initialValue = 0f,
         targetValue = 1f,
         animationSpec = infiniteRepeatable(
-            animation = tween(10000, easing = LinearEasing),
+            animation = tween(20000, easing = LinearEasing),
             repeatMode = RepeatMode.Restart
         )
     )
 
     val particles = remember {
-        List(50) {
+        List(60) {
             Particle(
                 x = Random.nextFloat(),
                 y = Random.nextFloat(),
-                radius = Random.nextFloat() * 4f + 1f,
-                speedX = (Random.nextFloat() - 0.5f) * 0.001f,
-                speedY = (Random.nextFloat() - 0.5f) * 0.001f,
-                alpha = Random.nextFloat() * 0.5f + 0.2f
+                radius = Random.nextFloat() * 6f + 2f,
+                speedX = (Random.nextFloat() - 0.5f) * 0.0008f,
+                speedY = (Random.nextFloat() - 0.5f) * 0.0008f,
+                alpha = Random.nextFloat() * 0.3f + 0.1f,
+                colorShift = Random.nextFloat()
             )
         }
     }
@@ -47,6 +52,23 @@ fun ParticleBackground(modifier: Modifier = Modifier, color: Color) {
     Canvas(modifier = modifier.fillMaxSize()) {
         val width = size.width
         val height = size.height
+
+        // Draw connections between close particles
+        for (i in particles.indices) {
+            for (j in i + 1 until particles.indices.size) {
+                val dx = (particles[i].x - particles[j].x) * width
+                val dy = (particles[i].y - particles[j].y) * height
+                val distance = kotlin.math.sqrt(dx * dx + dy * dy)
+                if (distance < 200f) {
+                    drawLine(
+                        color = color.copy(alpha = (1f - distance / 200f) * 0.15f),
+                        start = Offset(particles[i].x * width, particles[i].y * height),
+                        end = Offset(particles[j].x * width, particles[j].y * height),
+                        strokeWidth = 1f
+                    )
+                }
+            }
+        }
 
         particles.forEach { p ->
             p.x += p.speedX
@@ -57,6 +79,13 @@ fun ParticleBackground(modifier: Modifier = Modifier, color: Color) {
             if (p.y < 0) p.y = 1f
             if (p.y > 1) p.y = 0f
 
+            // Glow effect
+            drawCircle(
+                color = color.copy(alpha = p.alpha * 0.5f),
+                radius = p.radius * 2.5f,
+                center = Offset(p.x * width, p.y * height)
+            )
+            
             drawCircle(
                 color = color.copy(alpha = p.alpha),
                 radius = p.radius,

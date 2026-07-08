@@ -42,6 +42,9 @@ fun TimerScreen(viewModel: TimerViewModel, userPreferences: UserPreferences) {
     val isRunning by viewModel.isRunning.collectAsState()
     val isCountUp by viewModel.isCountUp.collectAsState()
     val taskTitle by viewModel.taskTitle.collectAsState()
+    
+    val timerFontSize by userPreferences.timerFontSize.collectAsState(initial = 160f)
+    
     val scope = rememberCoroutineScope()
     
     var currentTime by remember { mutableStateOf(Date()) }
@@ -151,17 +154,40 @@ fun TimerScreen(viewModel: TimerViewModel, userPreferences: UserPreferences) {
             Spacer(modifier = Modifier.weight(1f))
 
             // Massive Timer Display
-            Text(
-                text = formatTime(timeSeconds),
-                style = MaterialTheme.typography.displayLarge.copy(
-                    fontSize = 160.sp,
-                    fontFamily = FontFamily.Monospace,
-                    fontWeight = FontWeight.ExtraBold,
-                    brush = Brush.verticalGradient(
-                        colors = listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.secondary)
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    text = formatTime(timeSeconds),
+                    style = MaterialTheme.typography.displayLarge.copy(
+                        fontSize = timerFontSize.sp,
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.ExtraBold,
+                        brush = Brush.verticalGradient(
+                            colors = listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.secondary)
+                        )
                     )
                 )
-            )
+                
+                // Font Size Slider (Hidden when running to keep focus)
+                AnimatedVisibility(visible = !isRunning) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.width(300.dp).padding(top = 16.dp)
+                    ) {
+                        Text("A-", color = Color.Gray, fontSize = 12.sp)
+                        Slider(
+                            value = timerFontSize,
+                            onValueChange = { scope.launch { userPreferences.setTimerFontSize(it) } },
+                            valueRange = 80f..300f,
+                            modifier = Modifier.weight(1f),
+                            colors = SliderDefaults.colors(
+                                thumbColor = MaterialTheme.colorScheme.primary,
+                                activeTrackColor = MaterialTheme.colorScheme.primary
+                            )
+                        )
+                        Text("A+", color = Color.Gray, fontSize = 18.sp)
+                    }
+                }
+            }
 
             Spacer(modifier = Modifier.weight(1.2f))
 
