@@ -56,7 +56,7 @@ fun ParticleBackground(modifier: Modifier = Modifier, color: Color) {
 
         // Draw connections between close particles
         for (i in particles.indices) {
-            for (j in i + 1 until particles.indices.size) {
+            for (j in i + 1 until particles.size) {
                 val dx = (particles[i].x - particles[j].x) * canvasWidth
                 val dy = (particles[i].y - particles[j].y) * canvasHeight
                 val distance = kotlin.math.sqrt(dx * dx + dy * dy)
