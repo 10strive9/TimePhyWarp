@@ -50,20 +50,20 @@ fun ParticleBackground(modifier: Modifier = Modifier, color: Color) {
     }
 
     Canvas(modifier = modifier.fillMaxSize()) {
-        val width = size.width
-        val height = size.height
+        val canvasWidth = size.width
+        val canvasHeight = size.height
 
         // Draw connections between close particles
         for (i in particles.indices) {
             for (j in i + 1 until particles.indices.size) {
-                val dx = (particles[i].x - particles[j].x) * width
-                val dy = (particles[i].y - particles[j].y) * height
+                val dx = (particles[i].x - particles[j].x) * canvasWidth
+                val dy = (particles[i].y - particles[j].y) * canvasHeight
                 val distance = kotlin.math.sqrt(dx * dx + dy * dy)
                 if (distance < 200f) {
                     drawLine(
                         color = color.copy(alpha = (1f - distance / 200f) * 0.15f),
-                        start = Offset(particles[i].x * width, particles[i].y * height),
-                        end = Offset(particles[j].x * width, particles[j].y * height),
+                        start = Offset(particles[i].x * canvasWidth, particles[i].y * canvasHeight),
+                        end = Offset(particles[j].x * canvasWidth, particles[j].y * canvasHeight),
                         strokeWidth = 1f
                     )
                 }
@@ -83,13 +83,13 @@ fun ParticleBackground(modifier: Modifier = Modifier, color: Color) {
             drawCircle(
                 color = color.copy(alpha = p.alpha * 0.5f),
                 radius = p.radius * 2.5f,
-                center = Offset(p.x * width, p.y * height)
+                center = Offset(p.x * canvasWidth, p.y * canvasHeight)
             )
             
             drawCircle(
                 color = color.copy(alpha = p.alpha),
                 radius = p.radius,
-                center = Offset(p.x * width, p.y * height)
+                center = Offset(p.x * canvasWidth, p.y * canvasHeight)
             )
         }
     }
