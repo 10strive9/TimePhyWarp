@@ -16,24 +16,16 @@ enum class AppTheme(val label: String, val primary: Color, val secondary: Color)
 @Composable
 fun TimePhyWarpTheme(
     appTheme: AppTheme = AppTheme.BLUE,
-    darkTheme: Boolean = isSystemInDarkTheme(),
     content: @Composable () -> Unit
 ) {
-    val colorScheme = if (darkTheme && appTheme != AppTheme.WHITE) {
-        darkColorScheme(
-            primary = appTheme.primary,
-            secondary = appTheme.secondary,
-            background = Color(0xFF121212),
-            surface = Color(0xFF1E1E1E)
-        )
-    } else {
-        lightColorScheme(
-            primary = appTheme.primary,
-            secondary = appTheme.secondary,
-            background = BackgroundLight,
-            surface = Color.White
-        )
-    }
+    val colorScheme = darkColorScheme(
+        primary = appTheme.primary,
+        secondary = appTheme.secondary,
+        background = SurfaceDark,
+        surface = SurfaceCard,
+        onBackground = TextPrimary,
+        onSurface = TextPrimary
+    )
 
     MaterialTheme(
         colorScheme = colorScheme,

@@ -20,11 +20,16 @@ fun MainScreen(viewModel: TimerViewModel, userPreferences: UserPreferences) {
     if (isLandscape) {
         // Tablet landscape: split screen
         Row(modifier = Modifier.fillMaxSize()) {
-            Box(modifier = Modifier.weight(1.2f)) {
+            Box(modifier = Modifier.weight(1.5f)) {
                 TimerScreen(viewModel, userPreferences)
             }
-            Divider(modifier = Modifier.fillMaxHeight().width(1.dp))
-            Box(modifier = Modifier.weight(1f)) {
+            Box(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .width(400.dp)
+                    .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.95f))
+                    .padding(8.dp)
+            ) {
                 LogScreen(viewModel)
             }
         }
