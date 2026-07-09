@@ -16,8 +16,8 @@ data class Particle(
     var x: Float,
     var y: Float,
     val radius: Float,
-    val speedX: Float,
-    val speedY: Float,
+    var speedX: Float,
+    var speedY: Float,
     val alpha: Float
 )
 
