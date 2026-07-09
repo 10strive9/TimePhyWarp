@@ -55,6 +55,11 @@ fun TimerScreen(viewModel: TimerViewModel, userPreferences: UserPreferences) {
         }
     }
 
+    // 倒计时输入状态
+    var h by remember { mutableStateOf("00") }
+    var m by remember { mutableStateOf("25") }
+    var s by remember { mutableStateOf("00") }
+
     Box(modifier = Modifier.fillMaxSize()) {
         // Futuristic Background
         ParticleBackground(color = MaterialTheme.colorScheme.primary)
@@ -124,30 +129,14 @@ fun TimerScreen(viewModel: TimerViewModel, userPreferences: UserPreferences) {
             }
 
             // Countdown Input Area
-            if (!isCountUp && timeSeconds == 0L && !isRunning) {
+            AnimatedVisibility(visible = !isCountUp && !isRunning && timeSeconds == 0L) {
                 Spacer(modifier = Modifier.height(24.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    var h by remember { mutableStateOf("00") }
-                    var m by remember { mutableStateOf("25") }
-                    var s by remember { mutableStateOf("00") }
-                    
                     TimeInputCard(h, "H") { h = it }
                     Text(":", color = Color.Gray, fontSize = 24.sp)
                     TimeInputCard(m, "M") { m = it }
                     Text(":", color = Color.Gray, fontSize = 24.sp)
                     TimeInputCard(s, "S") { s = it }
-                    
-                    Spacer(modifier = Modifier.width(16.dp))
-                    
-                    IconButton(
-                        onClick = {
-                            val total = (h.toLongOrNull() ?: 0) * 3600 + (m.toLongOrNull() ?: 0) * 60 + (s.toLongOrNull() ?: 0)
-                            viewModel.startTimer(total)
-                        },
-                        modifier = Modifier.background(MaterialTheme.colorScheme.primary, CircleShape)
-                    ) {
-                        Icon(Icons.Default.PlayArrow, contentDescription = "Start", tint = Color.Black)
-                    }
                 }
             }
 
@@ -201,8 +190,14 @@ fun TimerScreen(viewModel: TimerViewModel, userPreferences: UserPreferences) {
                     text = if (isRunning) "PAUSE" else if (timeSeconds > 0) "RESUME" else "START",
                     primary = true,
                     onClick = {
-                        if (isRunning) viewModel.pauseTimer()
-                        else viewModel.startTimer()
+                        if (!isCountUp && timeSeconds == 0L) {
+                            // 倒计时模式且归零：计算数值并启动
+                            val total = (h.toLongOrNull() ?: 0) * 3600 + (m.toLongOrNull() ?: 0) * 60 + (s.toLongOrNull() ?: 0)
+                            viewModel.toggleTimer(total)
+                        } else {
+                            // 正计时或已开始的倒计时
+                            viewModel.toggleTimer()
+                        }
                     }
                 )
                 
@@ -286,15 +281,11 @@ fun MainControlButton(text: String, primary: Boolean, onClick: () -> Unit) {
     }
 }
 
-@Composable
-fun TimeInput(value: String, label: String, onValueChange: (String) -> Unit) {
-    OutlinedTextField(
-        value = value,
-        onValueChange = { if (it.length <= 2) onValueChange(it) },
-        label = { Text(label) },
-        modifier = Modifier.width(70.dp).padding(horizontal = 4.dp),
-        singleLine = true
-    )
+private fun formatTime(seconds: Long): String {
+    val h = seconds / 3600
+    val m = (seconds % 3600) / 60
+    val s = seconds % 60
+    return String.format("%02d:%02d:%02d", h, m, s)
 }
 
 @Composable
@@ -302,23 +293,16 @@ fun ThemeSelector(userPreferences: UserPreferences) {
     val scope = rememberCoroutineScope()
     LazyRow(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = Modifier.fillMaxWidth(),
-        contentPadding = PaddingValues(horizontal = 16.dp)
+        modifier = Modifier.padding(horizontal = 4.dp)
     ) {
         items(AppTheme.values()) { theme ->
             Button(
                 onClick = { scope.launch { userPreferences.setThemeColor(theme.name) } },
-                colors = ButtonDefaults.buttonColors(containerColor = theme.primary)
+                colors = ButtonDefaults.buttonColors(containerColor = theme.primary),
+                modifier = Modifier.size(32.dp),
+                contentPadding = PaddingValues(0.dp)
             ) {
-                Text(theme.label, color = if (theme == AppTheme.WHITE) Color.Black else Color.White)
             }
         }
     }
-}
-
-private fun formatTime(seconds: Long): String {
-    val h = seconds / 3600
-    val m = (seconds % 3600) / 60
-    val s = seconds % 60
-    return String.format("%02d:%02d:%02d", h, m, s)
 }

@@ -44,6 +44,7 @@ class TimerViewModel(application: Application) : AndroidViewModel(application) {
     val records: Flow<List<TimerRecord>>
 
     private var startTime: Long = 0
+    private var countdownTarget: Long = 0 // 新增：专门保存倒计时目标值
 
     private val serviceConnection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
@@ -77,41 +78,8 @@ class TimerViewModel(application: Application) : AndroidViewModel(application) {
             if (query.isEmpty()) repository.allRecords else repository.search(query)
         }
 
-        // Restore state
-        viewModelScope.launch {
-            userPreferences.timerState.first().let { state ->
-                if (state.isRunning) {
-                    val now = System.currentTimeMillis()
-                    val elapsed = (now - state.startTime) / 1000
-                    val newSeconds = if (state.isCountUp) state.targetSeconds + elapsed else state.targetSeconds - elapsed
-                    
-                    _taskTitle.value = state.title
-                    _isCountUp.value = state.isCountUp
-                    startTime = state.startTime
-                    
-                    if (state.isCountUp || newSeconds > 0) {
-                        startTimer(if (state.isCountUp) 0 else newSeconds)
-                    }
-                }
-            }
-        }
-
         val intent = Intent(application, TimerService::class.java)
         application.bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE)
-    }
-
-    private fun saveState() {
-        viewModelScope.launch {
-            userPreferences.saveTimerState(
-                TimerState(
-                    title = _taskTitle.value,
-                    startTime = startTime,
-                    targetSeconds = _timerValue.value,
-                    isRunning = _isRunning.value,
-                    isCountUp = _isCountUp.value
-                )
-            )
-        }
     }
 
     fun setTaskTitle(title: String) {
@@ -122,22 +90,39 @@ class TimerViewModel(application: Application) : AndroidViewModel(application) {
         _isCountUp.value = countUp
     }
 
-    fun startTimer(initialSeconds: Long = 0) {
-        startTime = if (startTime == 0L) System.currentTimeMillis() else startTime
-        val intent = Intent(getApplication(), TimerService::class.java)
-        getApplication<Application>().startForegroundService(intent)
-        timerService?.startTimer(_taskTitle.value, if (_isCountUp.value) 0 else initialSeconds, _isCountUp.value)
-        saveState()
+    // 统一处理启动/继续逻辑
+    fun toggleTimer(countdownSeconds: Long = 0) {
+        if (_isRunning.value) {
+            // 如果正在运行，则暂停
+            pauseTimer()
+        } else {
+            // 如果未运行
+            if (_timerValue.value > 0) {
+                // 如果有时间记录（暂停状态），则继续
+                resumeTimer()
+            } else {
+                // 如果是0，则全新开始
+                startTime = System.currentTimeMillis()
+                countdownTarget = countdownSeconds
+                
+                val intent = Intent(getApplication(), TimerService::class.java)
+                getApplication<Application>().startForegroundService(intent)
+                
+                timerService?.startTimer(
+                    _taskTitle.value, 
+                    if (_isCountUp.value) 0 else countdownTarget, 
+                    _isCountUp.value
+                )
+            }
+        }
     }
 
     fun pauseTimer() {
         timerService?.pauseTimer()
-        saveState()
     }
 
     fun resumeTimer() {
         timerService?.resumeTimer()
-        saveState()
     }
 
     fun resetTimer() {
@@ -147,7 +132,7 @@ class TimerViewModel(application: Application) : AndroidViewModel(application) {
         timerService?.resetTimer()
         _timerValue.value = 0
         startTime = 0
-        saveState()
+        countdownTarget = 0
     }
 
     fun setSearchQuery(query: String) {
