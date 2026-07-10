@@ -1,307 +1,180 @@
 package com.phywarp.time.ui.screens
 
-import androidx.compose.animation.*
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.phywarp.time.data.local.UserPreferences
-import com.phywarp.time.ui.TimerViewModel
-import com.phywarp.time.ui.components.ParticleBackground
-import com.phywarp.time.ui.theme.AppTheme
+import com.phywarp.time.ui.components.FlipTimerDisplay
+import com.phywarp.time.viewmodel.TimerViewModel
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TimerScreen(viewModel: TimerViewModel, userPreferences: UserPreferences) {
+fun TimerScreen(
+    viewModel: TimerViewModel,
+    modifier: Modifier = Modifier
+) {
     val timeSeconds by viewModel.timerValue.collectAsState()
     val isRunning by viewModel.isRunning.collectAsState()
     val isCountUp by viewModel.isCountUp.collectAsState()
     val taskTitle by viewModel.taskTitle.collectAsState()
-    
-    val timerFontSize by userPreferences.timerFontSize.collectAsState(initial = 160f)
-    
-    val scope = rememberCoroutineScope()
-    
-    var currentTime by remember { mutableStateOf(Date()) }
+
+    // 倒计时输入
+    var countdownHours by remember { mutableStateOf("00") }
+    var countdownMinutes by remember { mutableStateOf("25") }
+    var countdownSeconds by remember { mutableStateOf("00") }
+
+    // 任务标题
+    var titleText by remember { mutableStateOf(TextFieldValue("")) }
+
+    // 计算显示的时:分:秒
+    val hours = timeSeconds / 3600
+    val minutes = (timeSeconds % 3600) / 60
+    val seconds = timeSeconds % 60
+
+    // 刷新时间显示
+    var currentTime by remember { mutableStateOf(System.currentTimeMillis()) }
     LaunchedEffect(Unit) {
         while (true) {
-            currentTime = Date()
-            delay(1000)
+            currentTime = System.currentTimeMillis()
+            delay(1000L)
         }
     }
 
-    // 倒计时输入状态
-    var h by remember { mutableStateOf("00") }
-    var m by remember { mutableStateOf("25") }
-    var s by remember { mutableStateOf("00") }
-
-    Box(modifier = Modifier.fillMaxSize()) {
-        // Futuristic Background
-        ParticleBackground(color = MaterialTheme.colorScheme.primary)
-        
-        Column(
-            modifier = Modifier.fillMaxSize().padding(horizontal = 48.dp, vertical = 32.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            // Header: Clock and Theme
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // Current Clock
-                Column {
-                    Text(
-                        text = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(currentTime),
-                        style = MaterialTheme.typography.titleLarge.copy(
-                            color = MaterialTheme.colorScheme.primary,
-                            fontFamily = FontFamily.Monospace,
-                            fontWeight = FontWeight.Bold
-                        )
-                    )
-                    Text(
-                        text = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(currentTime),
-                        style = MaterialTheme.typography.bodySmall.copy(color = Color.Gray)
-                    )
-                }
-
-                ThemeSelector(userPreferences)
-            }
-
-            Spacer(modifier = Modifier.height(40.dp))
-
-            // Task Title Card
-            Surface(
-                modifier = Modifier.fillMaxWidth(0.7f).shadow(8.dp, RoundedCornerShape(16.dp)),
-                shape = RoundedCornerShape(16.dp),
-                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f)
-            ) {
-                TextField(
-                    value = taskTitle,
-                    onValueChange = { viewModel.setTaskTitle(it) },
-                    placeholder = { Text("输入任务目标...", color = Color.Gray) },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = TextFieldDefaults.textFieldColors(
-                        containerColor = Color.Transparent,
-                        unfocusedIndicatorColor = Color.Transparent,
-                        focusedIndicatorColor = Color.Transparent
-                    ),
-                    textStyle = MaterialTheme.typography.titleMedium.copy(textAlign = TextAlign.Center)
-                )
-            }
-
-            Spacer(modifier = Modifier.height(32.dp))
-
-            // Mode Switcher (Glassmorphism)
-            Row(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(24.dp))
-                    .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.5f))
-                    .padding(4.dp)
-            ) {
-                ModeButton("正计时", isCountUp) { viewModel.setMode(true) }
-                ModeButton("倒计时", !isCountUp) { viewModel.setMode(false) }
-            }
-
-            // Countdown Input Area
-            AnimatedVisibility(visible = !isCountUp && !isRunning && timeSeconds == 0L) {
-                Spacer(modifier = Modifier.height(24.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    TimeInputCard(h, "H") { h = it }
-                    Text(":", color = Color.Gray, fontSize = 24.sp)
-                    TimeInputCard(m, "M") { m = it }
-                    Text(":", color = Color.Gray, fontSize = 24.sp)
-                    TimeInputCard(s, "S") { s = it }
-                }
-            }
-
-            Spacer(modifier = Modifier.weight(1f))
-
-            // Massive Timer Display
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(
-                    text = formatTime(timeSeconds),
-                    style = MaterialTheme.typography.displayLarge.copy(
-                        fontSize = timerFontSize.sp,
-                        fontFamily = FontFamily.Monospace,
-                        fontWeight = FontWeight.ExtraBold,
-                        brush = Brush.verticalGradient(
-                            colors = listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.secondary)
-                        )
-                    )
-                )
-                
-                // Font Size Slider (Hidden when running to keep focus)
-                AnimatedVisibility(visible = !isRunning) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.width(300.dp).padding(top = 16.dp)
-                    ) {
-                        Text("A-", color = Color.Gray, fontSize = 12.sp)
-                        Slider(
-                            value = timerFontSize,
-                            onValueChange = { scope.launch { userPreferences.setTimerFontSize(it) } },
-                            valueRange = 80f..300f,
-                            modifier = Modifier.weight(1f),
-                            colors = SliderDefaults.colors(
-                                thumbColor = MaterialTheme.colorScheme.primary,
-                                activeTrackColor = MaterialTheme.colorScheme.primary
-                            )
-                        )
-                        Text("A+", color = Color.Gray, fontSize = 18.sp)
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.weight(1.2f))
-
-            // Futuristic Control Buttons
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                MainControlButton(
-                    text = if (isRunning) "PAUSE" else if (timeSeconds > 0) "RESUME" else "START",
-                    primary = true,
-                    onClick = {
-                        if (!isCountUp && timeSeconds == 0L) {
-                            // 倒计时模式且归零：计算数值并启动
-                            val total = (h.toLongOrNull() ?: 0) * 3600 + (m.toLongOrNull() ?: 0) * 60 + (s.toLongOrNull() ?: 0)
-                            viewModel.toggleTimer(total)
-                        } else {
-                            // 正计时或已开始的倒计时
-                            viewModel.toggleTimer()
-                        }
-                    }
-                )
-                
-                Spacer(modifier = Modifier.width(32.dp))
-                
-                MainControlButton(
-                    text = "RESET",
-                    primary = false,
-                    onClick = { viewModel.resetTimer() }
-                )
-            }
-            
-            Spacer(modifier = Modifier.height(40.dp))
-        }
-    }
-}
-
-@Composable
-fun ModeButton(text: String, isSelected: Boolean, onClick: () -> Unit) {
-    Box(
-        modifier = Modifier
-            .clip(RoundedCornerShape(20.dp))
-            .background(if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent)
-            .clickable { onClick() }
-            .padding(horizontal = 24.dp, vertical = 8.dp)
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(horizontal = 32.dp, vertical = 16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
     ) {
+        // 顶部小小时钟
         Text(
-            text = text,
-            color = if (isSelected) Color.Black else Color.Gray,
-            fontWeight = FontWeight.Bold
+            text = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date(currentTime)),
+            color = Color(0xFF666666),
+            fontSize = 24.sp
         )
-    }
-}
 
-@Composable
-fun TimeInputCard(value: String, label: String, onValueChange: (String) -> Unit) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Box(
-            modifier = Modifier
-                .size(60.dp)
-                .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(8.dp))
-                .border(1.dp, Color.DarkGray, RoundedCornerShape(8.dp)),
-            contentAlignment = Alignment.Center
+        Spacer(modifier = Modifier.height(32.dp))
+
+        // 模式切换
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            BasicTextField(
-                value = value,
-                onValueChange = { if (it.length <= 2) onValueChange(it) },
-                textStyle = MaterialTheme.typography.titleLarge.copy(
-                    color = Color.White,
-                    textAlign = TextAlign.Center,
-                    fontFamily = FontFamily.Monospace
-                ),
-                modifier = Modifier.fillMaxWidth()
+            FilterChip(
+                selected = isCountUp,
+                onClick = { viewModel.setCountUp(true) },
+                label = { Text("正计时") }
+            )
+            FilterChip(
+                selected = !isCountUp,
+                onClick = { viewModel.setCountUp(false) },
+                label = { Text("倒计时") }
             )
         }
-        Text(label, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
-    }
-}
 
-@Composable
-fun MainControlButton(text: String, primary: Boolean, onClick: () -> Unit) {
-    Button(
-        onClick = onClick,
-        modifier = Modifier
-            .height(72.dp)
-            .width(200.dp)
-            .shadow(if (primary) 12.dp else 0.dp, RoundedCornerShape(36.dp)),
-        colors = ButtonDefaults.buttonColors(
-            containerColor = if (primary) MaterialTheme.colorScheme.primary else Color.Transparent
-        ),
-        shape = RoundedCornerShape(36.dp),
-        border = if (!primary) BorderStroke(2.dp, Color.Gray) else null
-    ) {
-        Text(
-            text = text,
-            fontSize = 22.sp,
-            fontWeight = FontWeight.Black,
-            color = if (primary) Color.Black else Color.Gray,
-            letterSpacing = 2.sp
+        Spacer(modifier = Modifier.height(32.dp))
+
+        // 翻页计时显示
+        FlipTimerDisplay(
+            hours = hours,
+            minutes = minutes,
+            seconds = seconds
         )
-    }
-}
 
-private fun formatTime(seconds: Long): String {
-    val h = seconds / 3600
-    val m = (seconds % 3600) / 60
-    val s = seconds % 60
-    return String.format("%02d:%02d:%02d", h, m, s)
-}
-
-@Composable
-fun ThemeSelector(userPreferences: UserPreferences) {
-    val scope = rememberCoroutineScope()
-    LazyRow(
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = Modifier.padding(horizontal = 4.dp)
-    ) {
-        items(AppTheme.values()) { theme ->
-            Button(
-                onClick = { scope.launch { userPreferences.setThemeColor(theme.name) } },
-                colors = ButtonDefaults.buttonColors(containerColor = theme.primary),
-                modifier = Modifier.size(32.dp),
-                contentPadding = PaddingValues(0.dp)
+        // 倒计时输入框（仅在倒计时模式且未运行时显示）
+        if (!isCountUp && !isRunning) {
+            Spacer(modifier = Modifier.height(24.dp))
+            Row(
+                verticalAlignment = Alignment.CenterVertically
             ) {
+                OutlinedTextField(
+                    value = countdownHours,
+                    onValueChange = { if (it.length <= 2) countdownHours = it },
+                    modifier = Modifier.width(80.dp),
+                    label = { Text("时") },
+                    singleLine = true
+                )
+                Text(text = ":", fontSize = 32.sp, modifier = Modifier.padding(horizontal = 8.dp))
+                OutlinedTextField(
+                    value = countdownMinutes,
+                    onValueChange = { if (it.length <= 2) countdownMinutes = it },
+                    modifier = Modifier.width(80.dp),
+                    label = { Text("分") },
+                    singleLine = true
+                )
+                Text(text = ":", fontSize = 32.sp, modifier = Modifier.padding(horizontal = 8.dp))
+                OutlinedTextField(
+                    value = countdownSeconds,
+                    onValueChange = { if (it.length <= 2) countdownSeconds = it },
+                    modifier = Modifier.width(80.dp),
+                    label = { Text("秒") },
+                    singleLine = true
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(32.dp))
+
+        // 标题输入
+        OutlinedTextField(
+            value = titleText,
+            onValueChange = {
+                titleText = it
+                viewModel.setTaskTitle(it.text)
+            },
+            modifier = Modifier.fillMaxWidth(0.7f),
+            label = { Text("任务标题") },
+            singleLine = true
+        )
+
+        // TODO: 这里预留标签选择的位置
+
+        Spacer(modifier = Modifier.height(48.dp))
+
+        // 控制按钮
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(24.dp)
+        ) {
+            Button(
+                onClick = {
+                    if (!isCountUp && !isRunning) {
+                        // 设置倒计时
+                        val h = countdownHours.toIntOrNull() ?: 0
+                        val m = countdownMinutes.toIntOrNull() ?: 0
+                        val s = countdownSeconds.toIntOrNull() ?: 0
+                        viewModel.setCountdownTime(h * 3600 + m * 60 + s)
+                    }
+                    viewModel.toggleTimer()
+                },
+                modifier = Modifier
+                    .height(64.dp)
+                    .width(180.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFF00BFFF)
+                )
+            ) {
+                Text(
+                    text = if (isRunning) "暂停" else "开始",
+                    fontSize = 24.sp
+                )
+            }
+
+            OutlinedButton(
+                onClick = { viewModel.resetTimer() },
+                modifier = Modifier
+                    .height(64.dp)
+                    .width(180.dp)
+            ) {
+                Text(text = "重置", fontSize = 24.sp)
             }
         }
     }

@@ -1,4 +1,4 @@
-package com.phywarp.time.ui
+package com.phywarp.time.viewmodel
 
 import android.app.Application
 import android.content.ComponentName
@@ -9,49 +9,47 @@ import android.os.IBinder
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.phywarp.time.data.local.AppDatabase
-import com.phywarp.time.data.local.UserPreferences
-import com.phywarp.time.data.local.TimerState
 import com.phywarp.time.data.local.TimerRecord
-import com.phywarp.time.data.repository.TimerRepository
+import com.phywarp.time.data.local.UserPreferences
 import com.phywarp.time.service.TimerService
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.flow.first
 import java.text.SimpleDateFormat
-import java.util.*
+import java.util.Date
+import java.util.Locale
 
 class TimerViewModel(application: Application) : AndroidViewModel(application) {
 
-    private val repository: TimerRepository
+    private val database = AppDatabase.getDatabase(application)
+    private val timerDao = database.timerDao()
     private var timerService: TimerService? = null
     private var isBound = false
 
+    // 状态
     private val _timerValue = MutableStateFlow(0L)
-    val timerValue = _timerValue.asStateFlow()
+    val timerValue: StateFlow<Long> = _timerValue.asStateFlow()
 
     private val _isRunning = MutableStateFlow(false)
-    val isRunning = _isRunning.asStateFlow()
+    val isRunning: StateFlow<Boolean> = _isRunning.asStateFlow()
 
     private val _taskTitle = MutableStateFlow("")
-    val taskTitle = _taskTitle.asStateFlow()
+    val taskTitle: StateFlow<String> = _taskTitle.asStateFlow()
 
     private val _isCountUp = MutableStateFlow(true)
-    val isCountUp = _isCountUp.asStateFlow()
-
-    val allRecords: Flow<List<TimerRecord>>
-    
-    private val _searchQuery = MutableStateFlow("")
-    val records: Flow<List<TimerRecord>>
+    val isCountUp: StateFlow<Boolean> = _isCountUp.asStateFlow()
 
     private var startTime: Long = 0
-    private var countdownTarget: Long = 0 // 新增：专门保存倒计时目标值
+    private var countdownTarget: Long = 0
 
+    // 服务绑定
     private val serviceConnection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
             val binder = service as TimerService.TimerBinder
             timerService = binder.getService()
             isBound = true
-            
+
             viewModelScope.launch {
                 timerService?.timeInSeconds?.collect { _timerValue.value = it }
             }
@@ -66,55 +64,51 @@ class TimerViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    private val userPreferences: UserPreferences
-
     init {
-        val database = AppDatabase.getDatabase(application)
-        repository = TimerRepository(database.timerDao())
-        userPreferences = UserPreferences(application)
-        
-        allRecords = repository.allRecords
-        records = _searchQuery.flatMapLatest { query ->
-            if (query.isEmpty()) repository.allRecords else repository.search(query)
-        }
-
         val intent = Intent(application, TimerService::class.java)
         application.bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE)
     }
 
+    // 设置标题
     fun setTaskTitle(title: String) {
         _taskTitle.value = title
     }
 
-    fun setMode(countUp: Boolean) {
-        _isCountUp.value = countUp
+    // 设置模式
+    fun setCountUp(isCountUp: Boolean) {
+        _isCountUp.value = isCountUp
     }
 
-    // 统一处理启动/继续逻辑
-    fun toggleTimer(countdownSeconds: Long = 0) {
+    // 设置倒计时目标
+    fun setCountdownTime(seconds: Long) {
+        countdownTarget = seconds
+    }
+
+    // 切换计时（统一处理开始/暂停/继续）
+    fun toggleTimer() {
         if (_isRunning.value) {
-            // 如果正在运行，则暂停
             pauseTimer()
         } else {
-            // 如果未运行
-            if (_timerValue.value > 0) {
-                // 如果有时间记录（暂停状态），则继续
+            if (_timerValue.value > 0 && startTime > 0) {
+                // 继续
                 resumeTimer()
             } else {
-                // 如果是0，则全新开始
+                // 全新开始
                 startTime = System.currentTimeMillis()
-                countdownTarget = countdownSeconds
-                
-                val intent = Intent(getApplication(), TimerService::class.java)
-                getApplication<Application>().startForegroundService(intent)
-                
-                timerService?.startTimer(
-                    _taskTitle.value, 
-                    if (_isCountUp.value) 0 else countdownTarget, 
-                    _isCountUp.value
-                )
+                startTimer()
             }
         }
+    }
+
+    private fun startTimer() {
+        val intent = Intent(getApplication(), TimerService::class.java)
+        getApplication<Application>().startForegroundService(intent)
+
+        timerService?.startTimer(
+            _taskTitle.value,
+            if (_isCountUp.value) 0 else countdownTarget,
+            _isCountUp.value
+        )
     }
 
     fun pauseTimer() {
@@ -135,35 +129,27 @@ class TimerViewModel(application: Application) : AndroidViewModel(application) {
         countdownTarget = 0
     }
 
-    fun setSearchQuery(query: String) {
-        _searchQuery.value = query
-    }
-
+    // 保存记录（现在支持 tag，暂留空）
     private fun saveRecord() {
         val endTime = System.currentTimeMillis()
-        val duration = _timerValue.value
+        val duration = if (_isCountUp.value) {
+            (endTime - startTime) / 1000
+        } else {
+            countdownTarget - _timerValue.value
+        }
+
         val record = TimerRecord(
             title = _taskTitle.value.ifEmpty { "未命名任务" },
+            tag = null, // 预留标签
             type = if (_isCountUp.value) "正计时" else "倒计时",
             startTime = startTime,
             endTime = endTime,
             duration = duration,
             dateString = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date(startTime))
         )
-        viewModelScope.launch {
-            repository.insert(record)
-        }
-    }
 
-    fun deleteRecord(id: Long) {
         viewModelScope.launch {
-            repository.delete(id)
-        }
-    }
-
-    fun deleteRecordsByDate(date: String) {
-        viewModelScope.launch {
-            repository.deleteByDate(date)
+            timerDao.insertRecord(record)
         }
     }
 

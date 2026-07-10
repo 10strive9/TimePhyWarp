@@ -8,6 +8,7 @@ data class TimerRecord(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
     val title: String,
+    val tag: String? = null, // 新增：标签字段，可为空
     val type: String, // "COUNT_UP" or "COUNT_DOWN"
     val startTime: Long, // Timestamp
     val endTime: Long,   // Timestamp

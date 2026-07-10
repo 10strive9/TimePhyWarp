@@ -1,74 +1,80 @@
 package com.phywarp.time.ui.screens
 
-import android.content.Context
-import android.widget.Toast
 import androidx.compose.foundation.layout.*
-import java.io.File
-import java.io.FileOutputStream
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.phywarp.time.data.local.AppDatabase
 import com.phywarp.time.data.local.TimerRecord
-import com.phywarp.time.ui.TimerViewModel
+import com.phywarp.time.viewmodel.TimerViewModel
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
 
 @Composable
-fun LogScreen(viewModel: TimerViewModel) {
-    val records by viewModel.records.collectAsState(initial = emptyList())
-    var searchQuery by remember { mutableStateOf("") }
+fun LogScreen(
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var records by remember { mutableStateOf<List<TimerRecord>>(emptyList()) }
 
-    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text("计时日志", style = MaterialTheme.typography.titleLarge)
-            
-            Row {
-                val context = androidx.compose.ui.platform.LocalContext.current
-                TextButton(onClick = { 
-                    exportLogsToTxt(context, records)
-                }) {
-                    Text("导出 TXT")
-                }
-            }
-        }
+    // 加载记录
+    LaunchedEffect(Unit) {
+        val dao = AppDatabase.getDatabase(context).timerDao()
+        dao.getAllRecords().collect { records = it }
+    }
 
-        Spacer(modifier = Modifier.height(16.dp))
-
-        OutlinedTextField(
-            value = searchQuery,
-            onValueChange = {
-                searchQuery = it
-                viewModel.setSearchQuery(it)
-            },
-            placeholder = { Text("搜索任务标题...") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        // 标题
+        Text(
+            text = "计时日志",
+            fontSize = 32.sp,
+            color = Color(0xFF00BFFF),
+            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
         )
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        val groupedRecords = records.groupBy { it.dateString }
+        if (records.isEmpty()) {
+            // 空状态
+            Text(
+                text = "还没有任何记录，快去开始计时吧！",
+                color = Color(0xFF888888),
+                fontSize = 18.sp
+            )
+        } else {
+            // 按日期分组
+            val groupedRecords = records.groupBy { it.dateString }
 
-        LazyColumn(modifier = Modifier.fillMaxSize()) {
-            groupedRecords.forEach { (date, recordsInDate) ->
-                item {
-                    DateHeader(date) {
-                        viewModel.deleteRecordsByDate(date)
+            LazyColumn(
+                modifier = Modifier.fillMaxSize()
+            ) {
+                groupedRecords.forEach { (date, recordsInDate) ->
+                    item {
+                        // 日期标题
+                        Text(
+                            text = date,
+                            fontSize = 20.sp,
+                            color = Color(0xFF00BFFF),
+                            modifier = Modifier.padding(vertical = 8.dp)
+                        )
                     }
-                }
-                items(recordsInDate) { record ->
-                    RecordItem(record) {
-                        viewModel.deleteRecord(record.id)
+                    items(recordsInDate) { record ->
+                        RecordItem(record = record)
                     }
                 }
             }
@@ -77,82 +83,52 @@ fun LogScreen(viewModel: TimerViewModel) {
 }
 
 @Composable
-fun DateHeader(date: String, onClearAll: () -> Unit) {
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(date, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-        TextButton(onClick = onClearAll) {
-            Text("清空当日", color = MaterialTheme.colorScheme.error)
-        }
-    }
-}
-
-@Composable
-fun RecordItem(record: TimerRecord, onDelete: () -> Unit) {
-    val timeFormatter = SimpleDateFormat("HH:mm", Locale.getDefault())
-    val startStr = timeFormatter.format(Date(record.startTime))
-    val endStr = timeFormatter.format(Date(record.endTime))
-
+fun RecordItem(
+    record: TimerRecord,
+    modifier: Modifier = Modifier
+) {
     Card(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = Color(0x2200BFFF)
+        )
     ) {
-        Row(
-            modifier = Modifier.padding(16.dp).fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+        Column(
+            modifier = Modifier.padding(16.dp)
         ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(record.title, fontWeight = FontWeight.Medium, fontSize = 18.sp)
+            Text(
+                text = record.title,
+                fontSize = 20.sp,
+                color = Color.White
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Row(
+                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier.fillMaxWidth()
+            ) {
                 Text(
-                    "${record.type} | $startStr - $endStr",
-                    fontSize = 14.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    text = record.type,
+                    color = Color(0xFF00BFFF)
+                )
+                Text(
+                    text = "时长: ${formatDuration(record.duration)}",
+                    color = Color(0xFF888888)
                 )
             }
-            Text(
-                formatDuration(record.duration),
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
-            )
-            IconButton(onClick = onDelete) {
-                // Icon for delete
-                Text("×", fontSize = 24.sp, color = MaterialTheme.colorScheme.error)
-            }
         }
     }
 }
 
+// 格式化显示时长
 private fun formatDuration(seconds: Long): String {
     val h = seconds / 3600
     val m = (seconds % 3600) / 60
     val s = seconds % 60
-    return if (h > 0) "${h}h ${m}m ${s}s" else "${m}m ${s}s"
-}
-
-private fun exportLogsToTxt(context: Context, records: List<TimerRecord>) {
-    val fileName = "timer_logs_${System.currentTimeMillis()}.txt"
-    val content = StringBuilder()
-    
-    records.forEach { record ->
-        val startStr = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).format(Date(record.startTime))
-        val endStr = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).format(Date(record.endTime))
-        content.append("标题: ${record.title}\n")
-        content.append("类型: ${record.type}\n")
-        content.append("开始: $startStr\n")
-        content.append("结束: $endStr\n")
-        content.append("耗时: ${formatDuration(record.duration)}\n")
-        content.append("--------------------\n")
-    }
-
-    try {
-        val file = File(context.getExternalFilesDir(null), fileName)
-        FileOutputStream(file).use { it.write(content.toString().toByteArray()) }
-        Toast.makeText(context, "日志已导出至: ${file.absolutePath}", Toast.LENGTH_LONG).show()
-    } catch (e: Exception) {
-        Toast.makeText(context, "导出失败: ${e.message}", Toast.LENGTH_SHORT).show()
+    return if (h > 0) {
+        String.format("%02d:%02d:%02d", h, m, s)
+    } else {
+        String.format("%02d:%02d", m, s)
     }
 }
