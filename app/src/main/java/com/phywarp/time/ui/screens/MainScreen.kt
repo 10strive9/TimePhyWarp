@@ -11,14 +11,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -34,14 +32,13 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.phywarp.time.ui.components.StaticParticleBackground
-import com.phywarp.time.ui.theme.TimePhyWarpTheme
 import com.phywarp.time.viewmodel.TimerViewModel
 
 // 定义导航页面
 sealed class Screen(val title: String, val icon: ImageVector) {
-    object Timer : Screen("计时", Icons.Default.Timer)
-    object Log : Screen("日志", Icons.Default.History)
-    object Clock : Screen("时钟", Icons.Default.AccessTime)
+    object Timer : Screen("计时", Icons.Filled.Timer)
+    object Log : Screen("日志", Icons.Filled.History)
+    object Clock : Screen("时钟", Icons.Filled.AccessTime)
 }
 
 @Composable
@@ -50,41 +47,39 @@ fun MainScreen(
 ) {
     var selectedScreen by remember { mutableStateOf<Screen>(Screen.Timer) }
 
-    TimePhyWarpTheme {
-        Surface(
-            modifier = Modifier.fillMaxSize(),
-            color = Color(0xFF0A0A0A) // 深色背景
-        ) {
-            Box(modifier = Modifier.fillMaxSize()) {
-                // 静态粒子背景
-                StaticParticleBackground()
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = Color(0xFF0A0A0A) // 深色背景
+    ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            // 静态粒子背景
+            StaticParticleBackground()
 
-                // 主内容区域
-                Column(
-                    modifier = Modifier.fillMaxSize(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Bottom
+            // 主内容区域
+            Column(
+                modifier = Modifier.fillMaxSize(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Bottom
+            ) {
+                // 页面内容（占上方大部分空间）
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth(),
+                    contentAlignment = Alignment.Center
                 ) {
-                    // 页面内容（占上方大部分空间）
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxWidth(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        when (selectedScreen) {
-                            Screen.Timer -> TimerScreen(viewModel = viewModel)
-                            Screen.Log -> LogScreen()
-                            Screen.Clock -> FullscreenClockScreen()
-                        }
+                    when (selectedScreen) {
+                        Screen.Timer -> TimerScreen(viewModel = viewModel)
+                        Screen.Log -> LogScreen()
+                        Screen.Clock -> FullscreenClockScreen()
                     }
-
-                    // 新的底部导航栏（美观版！）
-                    CustomBottomNavigation(
-                        selectedScreen = selectedScreen,
-                        onScreenSelected = { selectedScreen = it }
-                    )
                 }
+
+                // 新的底部导航栏（美观版！）
+                CustomBottomNavigation(
+                    selectedScreen = selectedScreen,
+                    onScreenSelected = { selectedScreen = it }
+                )
             }
         }
     }

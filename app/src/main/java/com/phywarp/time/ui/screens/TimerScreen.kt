@@ -1,6 +1,5 @@
 package com.phywarp.time.ui.screens
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -17,6 +16,7 @@ import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.*
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TimerScreen(
     viewModel: TimerViewModel,
@@ -36,9 +36,9 @@ fun TimerScreen(
     var titleText by remember { mutableStateOf(TextFieldValue("")) }
 
     // 计算显示的时:分:秒
-    val hours = timeSeconds / 3600
-    val minutes = (timeSeconds % 3600) / 60
-    val seconds = timeSeconds % 60
+    val hours = (timeSeconds / 3600).toInt()
+    val minutes = ((timeSeconds % 3600) / 60).toInt()
+    val seconds = (timeSeconds % 60).toInt()
 
     // 刷新时间显示
     var currentTime by remember { mutableStateOf(System.currentTimeMillis()) }
@@ -85,9 +85,9 @@ fun TimerScreen(
 
         // 翻页计时显示
         FlipTimerDisplay(
-            hours = hours,
-            minutes = minutes,
-            seconds = seconds
+            hours = hours.toLong(),
+            minutes = minutes.toLong(),
+            seconds = seconds.toLong()
         )
 
         // 倒计时输入框（仅在倒计时模式且未运行时显示）
@@ -136,8 +136,6 @@ fun TimerScreen(
             singleLine = true
         )
 
-        // TODO: 这里预留标签选择的位置
-
         Spacer(modifier = Modifier.height(48.dp))
 
         // 控制按钮
@@ -151,7 +149,7 @@ fun TimerScreen(
                         val h = countdownHours.toIntOrNull() ?: 0
                         val m = countdownMinutes.toIntOrNull() ?: 0
                         val s = countdownSeconds.toIntOrNull() ?: 0
-                        viewModel.setCountdownTime(h * 3600 + m * 60 + s)
+                        viewModel.setCountdownTime((h * 3600 + m * 60 + s).toLong())
                     }
                     viewModel.toggleTimer()
                 },
